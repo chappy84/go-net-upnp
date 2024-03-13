@@ -73,37 +73,27 @@ func NewDevice() *Device {
 	return dev
 }
 
+type hasLocation interface {
+	GetLocation() (string, error)
+}
+
 // NewDeviceFromSSDPRequest returns a device from the specified SSDP packet.
 func NewDeviceFromSSDPRequest(ssdpReq *ssdp.Request) (*Device, error) {
-	descURL, err := ssdpReq.GetLocation()
-	if err != nil {
-		return nil, err
-	}
-
-	dev, err := NewDeviceFromDescriptionURL(descURL)
-
-	if err != nil {
-		dev.SetLocationURL(descURL)
-	}
-
-	return dev, err
+	return newDeviceFromGetLocation(ssdpReq)
 }
 
 // NewDeviceFromSSDPRequest returns a device from the specified SSDP packet.
 func NewDeviceFromSSDPResponse(ssdpRes *ssdp.Response) (*Device, error) {
-	descURL, err := ssdpRes.GetLocation()
+	return newDeviceFromGetLocation(ssdpRes)
+}
+
+func newDeviceFromGetLocation(withLoc hasLocation) (*Device, error) {
+	descURL, err := withLoc.GetLocation()
 	if err != nil {
 		return nil, err
 	}
 
-	dev, err := NewDeviceFromDescriptionURL(descURL)
-	if err != nil {
-		return nil, err
-	}
-
-	dev.SetLocationURL(descURL)
-
-	return dev, err
+	return NewDeviceFromDescriptionURL(descURL)
 }
 
 // NewDeviceFromDescriptionURL returns a device from the specified URL.
@@ -127,7 +117,14 @@ func NewDeviceFromDescriptionURL(descURL string) (*Device, error) {
 		return nil, err
 	}
 
-	return NewDeviceFromDescription(string(devDescBytes))
+	dev, err := NewDeviceFromDescription(string(devDescBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	dev.SetLocationURL(descURL)
+
+	return dev, err
 }
 
 // NewDeviceFromDescription returns a device from the specified string.
